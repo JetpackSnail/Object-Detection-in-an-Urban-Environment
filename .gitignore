@@ -6,10 +6,9 @@
 .vscode/
 
 # Folders
-*.tfrecord
 .github/
 
 # Training and model files
-events.*
-ckpt-*
-checkpoint
+*.tfrecord
+pretrained_model/
+experiment_*/

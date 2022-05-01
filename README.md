@@ -1,116 +1,153 @@
 # Object Detection in an Urban Environment
 
-## Data
-
-For this project, we will be using data from the [Waymo Open dataset](https://waymo.com/open/).
-
-[OPTIONAL] - The files can be downloaded directly from the website as tar files or from the [Google Cloud Bucket](https://console.cloud.google.com/storage/browser/waymo_open_dataset_v_1_2_0_individual_files/) as individual tf records. We have already provided the data required to finish this project in the workspace, so you don't need to download it separately.
-
-## Structure
-
-### Data
-
-The data you will use for training, validation and testing is organized as follow:
-```
-/home/workspace/data/waymo
-    - training_and_validation - contains 97 files to train and validate your models
-    - train: contain the train data (empty to start)
-    - val: contain the val data (empty to start)
-    - test - contains 3 files to test your model and create inference videos
-```
-
-The `training_and_validation` folder contains file that have been downsampled: we have selected one every 10 frames from 10 fps videos. The `testing` folder contains frames from the 10 fps video without downsampling.
-
-You will split this `training_and_validation` data into `train`, and `val` sets by completing and executing the `create_splits.py` file.
-
-### Experiments
-The experiments folder will be organized as follow:
-```
-experiments/
-    - pretrained_model/
-    - exporter_main_v2.py - to create an inference model
-    - model_main_tf2.py - to launch training
-    - reference/ - reference training with the unchanged config file
-    - experiment0/ - create a new folder for each experiment you run
-    - experiment1/ - create a new folder for each experiment you run
-    - experiment2/ - create a new folder for each experiment you run
-    - label_map.pbtxt
-    ...
-```
-
 ## Prerequisites
 
-### Local Setup
+### Local docker setup
 
 For local setup if you have your own Nvidia GPU, you can use the provided Dockerfile and requirements in the [build directory](./build).
 
 Follow [the README therein](./build/README.md) to create a docker container and install all prerequisites.
 
-### Download and process the data
+## Data
 
-**Note:** ”If you are using the classroom workspace, we have already completed the steps in the section for you. You can find the downloaded and processed files within the `/home/workspace/data/preprocessed_data/` directory. Check this out then proceed to the **Exploratory Data Analysis** part.
+For this project, we will be using data from the [Waymo Open dataset](https://waymo.com/open/).
+
+### Download the Waymo dataset
 
 The first goal of this project is to download the data from the Waymo's Google Cloud bucket to your local machine. For this project, we only need a subset of the data provided (for example, we do not need to use the Lidar data). Therefore, we are going to download and trim immediately each file. In `download_process.py`, you can view the `create_tf_example` function, which will perform this processing. This function takes the components of a Waymo Tf record and saves them in the Tf Object Detection api format. An example of such function is described [here](https://tensorflow-object-detection-api-tutorial.readthedocs.io/en/latest/training.html#create-tensorflow-records). We are already providing the `label_map.pbtxt` file.
 
-You can run the script using the following command:
 ```
-python download_process.py --data_dir {processed_file_location} --size {number of files you want to download}
+cd src/data_processing
+python3 download_process.py --data_dir <folder_to_save_dataset> --size <number of files you want to download>
 ```
 
-You are downloading 100 files (unless you changed the `size` parameter) so be patient! Once the script is done, you can look inside your `data_dir` folder to see if the files have been downloaded and processed correctly.
+An example command is `python3 download_process.py --data_dir /app/project/data --size 100`
 
-### Classroom Workspace
-
-In the classroom workspace, every library and package should already be installed in your environment. You will NOT need to make use of `gcloud` to download the images.
-
-## Instructions
+The time taken to process 100 files is around 3 hours.
 
 ### Exploratory Data Analysis
 
-You should use the data already present in `/home/workspace/data/waymo` directory to explore the dataset! This is the most important task of any machine learning project. To do so, open the `Exploratory Data Analysis` notebook. In this notebook, your first task will be to implement a `display_instances` function to display images and annotations using `matplotlib`. This should be very similar to the function you created during the course. Once you are done, feel free to spend more time exploring the data and report your findings. Report anything relevant about the dataset in the writeup.
+This is the most important task of any machine learning project. After the data is downloaded to the folder specified in the previous step, we will explore and visualise a sample of the dataset to have a sense of what the data looks like.
 
-Keep in mind that you should refer to this analysis to create the different spits (training, testing and validation).
+To do so, open the `Exploratory Data Analysis` notebook and run the cells to get some visualisation charts and figures. An example is shown below.
 
+![Initial data visualisation](/assets/initial_data_exploratory.png "Initial data visualisation")
 
-### Create the training - validation splits
-In the class, we talked about cross-validation and the importance of creating meaningful training and validation splits. For this project, you will have to create your own training and validation sets using the files located in `/home/workspace/data/waymo`. The `split` function in the `create_splits.py` file does the following:
-* create three subfolders: `/home/workspace/data/train/`, `/home/workspace/data/val/`, and `/home/workspace/data/test/`
-* split the tf records files between these three folders by symbolically linking the files from `/home/workspace/data/waymo/` to `/home/workspace/data/train/`, `/home/workspace/data/val/`, and `/home/workspace/data/test/`
+From the exploratory dataset, we can immediately note down 2 things. First, there are many more cars compared to pedestrains and cyclists. Pedestrains and cyclists will form our subset of "rare classes" that we need to pay closer attention to. Second, the lighting and weather conditions vary across datasets. We need to ensure that there is proper representation of images with good and bad lighting, as well as good and adverse weather conditions.
 
-Use the following command to run the script once your function is implemented:
+For additional exploratory data analysis, we will check the spread of classes across each image to see how heavily the number of cars skew the dataset. We will also need to see check the distribution of lighting conditions. For that, we will find the average pixel value and covert to perceived brightness for each image.
+
+#### Class distribution
+
+![Initial data visualisation](/assets/cls_distribution.png "Initial data visualisation")
+
+#### Brightness distribution
+
+![Initial data visualisation](/assets/brightness_distribution.png "Initial data visualisation")
+
+From the data above, there are many more cars than other classes in the dataset, and the brightness values are skewed towards the brighter area. In the data augmentation step, these issues need to be addressed.
+
+### Split the dataset
+
+The dataset is split randomly in the ratio 80% for training, 10% for validation and 10% for testing.
+
+The three subfolders are:
+
+* /app/project/data/processed/train
+
+* /app/project/data/processed/val
+
+* /app/project/data/processed/test
+
 ```
-python create_splits.py --data-dir /home/workspace/data
+cd src/data_processing
+python3 create_splits.py --source <source_folder_of_tfrecords> --destination <destination_folder_of_tfrecords>
 ```
 
-### Edit the config file
+An example command is `python3 create_splits.py --source /app/project/data/processed --destination /app/project/data/processed`
 
-Now you are ready for training. As we explain during the course, the Tf Object Detection API relies on **config files**. The config that we will use for this project is `pipeline.config`, which is the config for a SSD Resnet 50 640x640 model. You can learn more about the Single Shot Detector [here](https://arxiv.org/pdf/1512.02325.pdf).
+## Model
 
-First, let's download the [pretrained model](http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8.tar.gz) and move it to `/home/workspace/experiments/pretrained_model/`.
+### Download base model
+
+The config that we will use for this project is `pipeline.config`, which is the config for a SSD Resnet 50 640x640 model. You can learn more about the Single Shot Detector [here](https://arxiv.org/pdf/1512.02325.pdf).
+
+First, let's download the [pretrained model](http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8.tar.gz).
+
+```
+chmod +x download_model.sh
+cd scripts
+./download_model.sh /app/project/src/experiments/pretrained_model
+```
+
+### Experiments folder structure
+The experiments folder will be organized as follow:
+
+```
+experiments/
+    - experiment_0/ - create a new folder for each experiment you run
+    - experiment_1/ - create a new folder for each experiment you run
+    - pretrained_model/
+    - reference - reference training with the unchanged config file
+    - edit_config.py - edit pipeline.config
+    - exporter_main_v2.py - to create an inference model
+    - label_map.pbtxt - label to class mapping file
+    - model_main_tf2.py - to launch training
+```
+
+### Creating a new config file for training
 
 We need to edit the config files to change the location of the training and validation files, as well as the location of the label_map file, pretrained weights. We also need to adjust the batch size. To do so, run the following:
-```
-python edit_config.py --train_dir /home/workspace/data/train/ --eval_dir /home/workspace/data/val/ --batch_size 2 --checkpoint /home/workspace/experiments/pretrained_model/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8/checkpoint/ckpt-0 --label_map /home/workspace/experiments/label_map.pbtxt
-```
-A new config file has been created, `pipeline_new.config`.
 
-### Training
+```
+cd experiments
+python3 edit_config.py \
+--train_dir /app/project/data/processed/train \
+--eval_dir /app/project/data/processed/val \
+--batch_size 2 \
+--checkpoint /app/project/src/experiments/pretrained_model/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8/checkpoint/ckpt-0 \
+--label_map /app/project/src/experiments/label_map.pbtxt
+```
 
-You will now launch your very first experiment with the Tensorflow object detection API. Move the `pipeline_new.config` to the `/home/workspace/experiments/reference` folder. Now launch the training process:
-* a training process:
+A new config file `pipeline_new.config` will be created, which will be put in a newly created `experiment_N` folder, where N is the experiment number.
+
+## Training
+
+### Start training
+
+After the new config file is put to a new experiments folder, the training can begin with the below command.
+
 ```
-python experiments/model_main_tf2.py --model_dir=experiments/reference/ --pipeline_config_path=experiments/reference/pipeline_new.config
+cd src/experiments
+python3 model_main_tf2.py --model_dir=<path_to_experiment_folder>/ --pipeline_config_path=<path_to_experiment_folder>/pipeline_new.config
+
 ```
+
+Example command: `python3 model_main_tf2.py --model_dir=experiment_0/ --pipeline_config_path=experiment_0/pipeline_new.config`
+
+### Viewing Tensorboard
+
+We can visualise the loss and learning rate trends by using Tensorboard.
+
+```
+tensorboard --logdir <path_to_experiment_folder>
+```
+
+Example command: `tensorboard --logdir experiment_0`
+
+### Evaluation
+
 Once the training is finished, launch the evaluation process:
-* an evaluation process:
+*
+ an evaluation process:
+
 ```
-python experiments/model_main_tf2.py --model_dir=experiments/reference/ --pipeline_config_path=experiments/reference/pipeline_new.config --checkpoint_dir=experiments/reference/
+python3 experiments/model_main_tf2.py --model_dir=experiments/reference/ --pipeline_config_path=experiments/reference/pipeline_new.config --checkpoint_dir=experiments/reference/
 ```
 
-**Note**: Both processes will display some Tensorflow warnings, which can be ignored. You may have to kill the evaluation script manually using
-`CTRL+C`.
 
-To monitor the training, you can launch a tensorboard instance by running `python -m tensorboard.main --logdir experiments/reference/`. You will report your findings in the writeup.
+
+
 
 ### Improve the performances
 
