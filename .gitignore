@@ -1,5 +1,15 @@
+# Python
 *__pycache__
 *.ipynb_checkpoints/
+
+# IDE
 .vscode/
+
+# Folders
 *.tfrecord
 .github/
+
+# Training and model files
+events.*
+ckpt-*
+checkpoint

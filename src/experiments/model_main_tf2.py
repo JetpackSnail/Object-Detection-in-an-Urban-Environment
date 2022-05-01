@@ -72,6 +72,11 @@ FLAGS = flags.FLAGS
 
 
 def main(unused_argv):
+
+  # https://github.com/tensorflow/tensorflow/issues/45068
+  physical_devices = tf.config.list_physical_devices('GPU') 
+  tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
   flags.mark_flag_as_required('model_dir')
   flags.mark_flag_as_required('pipeline_config_path')
   tf.config.set_soft_device_placement(True)
