@@ -17,7 +17,7 @@ def edit(train_dir, eval_dir, batch_size, checkpoint, label_map):
     - label_map [str]: path to labelmap file
     """
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig() 
-    with tf.gfile.GFile("pipeline.config", "r") as f:                                                                                                                                                                                                                     
+    with tf.gfile.GFile("reference/pipeline.config", "r") as f:                                                                                                                                                                                                                     
         proto_str = f.read()                                                                                                                                                                                                                                          
         text_format.Merge(proto_str, pipeline_config)  
     
