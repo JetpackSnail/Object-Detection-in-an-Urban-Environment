@@ -1,6 +1,6 @@
 import argparse
 import time
-
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -78,8 +78,8 @@ def main(labelmap_path, model_path, tf_record_path, config_path, output_path):
                 detections['detection_scores'],
                 category_index,
                 use_normalized_coordinates=True,
-                max_boxes_to_draw=200,
-                min_score_thresh=.30,
+                max_boxes_to_draw=100,
+                min_score_thresh=.50,
                 agnostic_mode=False)
         images.append(image_np_with_detections)
 
@@ -95,7 +95,7 @@ def main(labelmap_path, model_path, tf_record_path, config_path, output_path):
         im_obj.set_data(image)
 
     anim = animation.FuncAnimation(f, animate, frames=len(images))
-    anim.save(output_path, fps=5, dpi=300)
+    anim.save(output_path, fps=1, dpi=300)
 
 
 if __name__ == "__main__":
