@@ -16,39 +16,59 @@ def split(source, destination):
         - source [str]: source data directory, contains the processed tf records
         - destination [str]: destination data directory, contains 3 sub folders: train / val / test
     """
-    # Define train, val, test split ratios (total sum to 1)
-    ratio = [0.8, 0.1, 0.1]
+
+    ratio = 0.8
 
     # Create subfolders
-    for i in ["train", "val", "test"]:
+    for i in ["train", "val"]:
         subfolder = os.path.join(destination, i)
         if not os.path.exists(subfolder):
             os.mkdir(subfolder)
 
-    # Get file to a list and randomise the order
-    file_lst = glob.glob(source + "/*.tfrecord")
-    random.shuffle(file_lst)
+    # Get file to a list and get files with cyclists from the exploratory data analysis step
+    file_lst = sorted(glob.glob(source + "/*.tfrecord"))
 
-    # Calculate number of files according to ratio
-    num_train = int(len(file_lst) * ratio[0])
-    num_val = int(len(file_lst) * ratio[1])
+    cyclist_lst = [1, 15, 16, 21, 23, 24, 31, 34, 35, 37,
+                   39, 42, 49, 52, 56, 61, 63, 65, 68, 72,
+                   78, 79, 86, 89, 90, 94, 95]
 
-    # Move train
-    for file in file_lst[:num_train]:
-        shutil.move(file, os.path.join(destination, "train")) 
+    leftover_lst = list(set(range(len(file_lst))) - set(cyclist_lst))
 
-    # Move val
-    for file in file_lst[num_train:num_val+num_train]:
-        shutil.move(file, os.path.join(destination, "val")) 
-    
-    # Move test
-    for file in file_lst[num_val+num_train:]:
-        shutil.move(file, os.path.join(destination, "test"))
+    cyclist_train = int(len(cyclist_lst) * ratio)
+    leftover_train = int(len(leftover_lst) * ratio)
 
-    logger.info(f"Number of training images: {num_train}")
-    logger.info(f"Number of validation images: {num_val}")
-    logger.info(f"Number of testing images: {len(file_lst) - num_train - num_val}")
+    random.shuffle(cyclist_lst)
+    random.shuffle(leftover_lst)
 
+    # Move train (cyclist)
+    for idx in cyclist_lst[:cyclist_train]:
+        directory, name = os.path.split(file_lst[idx]) 
+        src = os.path.join(source, name)
+        dest = os.path.join(destination, "train", name)
+        os.symlink(src=src, dst=dest)
+
+    # Move val (cyclist)
+    for idx in cyclist_lst[cyclist_train:]:
+        directory, name = os.path.split(file_lst[idx]) 
+        src = os.path.join(source, name)
+        dest = os.path.join(destination, "val", name)
+        os.symlink(src=src, dst=dest)
+   
+    # Move train (others)
+    for idx in leftover_lst[:leftover_train]:
+        directory, name = os.path.split(file_lst[idx]) 
+        src = os.path.join(source, name)
+        dest = os.path.join(destination, "train", name)
+        os.symlink(src=src, dst=dest)
+
+    # Move val (others)
+    for idx in leftover_lst[leftover_train:]:
+        directory, name = os.path.split(file_lst[idx]) 
+        src = os.path.join(source, name)
+        dest = os.path.join(destination, "val", name)
+        os.symlink(src=src, dst=dest)
+
+    logger.info("Done")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Split data into training / validation / testing')

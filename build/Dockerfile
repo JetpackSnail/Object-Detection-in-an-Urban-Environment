@@ -96,5 +96,5 @@ RUN git clone https://github.com/tensorflow/models.git && \
 RUN pip3 install tensorflow==2.4.0 tf-models-official==2.4.0 tensorflow_io pyparsing pycairo
 
 # Install google cloud SDK
-# RUN curl -sSL https://sdk.cloud.google.com > /tmp/gcl && bash /tmp/gcl --install-dir=~/gcloud --disable-prompts
-# ENV PATH="$PATH:/root/gcloud/google-cloud-sdk/bin"
+RUN curl -sSL https://sdk.cloud.google.com > /tmp/gcl && bash /tmp/gcl --install-dir=~/gcloud --disable-prompts
+ENV PATH="$PATH:/root/gcloud/google-cloud-sdk/bin"
