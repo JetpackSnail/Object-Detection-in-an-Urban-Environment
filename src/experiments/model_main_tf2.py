@@ -67,6 +67,7 @@ flags.DEFINE_integer(
 flags.DEFINE_boolean('record_summaries', True,
                      ('Whether or not to record summaries during'
                       ' training.'))
+flags.DEFINE_integer('checkpoint_max_to_keep', 4, 'Number of checkpoints to keep in model folder')
 
 FLAGS = flags.FLAGS
 
@@ -112,7 +113,8 @@ def main(unused_argv):
           train_steps=FLAGS.num_train_steps,
           use_tpu=FLAGS.use_tpu,
           checkpoint_every_n=FLAGS.checkpoint_every_n,
-          record_summaries=FLAGS.record_summaries)
+          record_summaries=FLAGS.record_summaries,
+          checkpoint_max_to_keep=FLAGS.checkpoint_max_to_keep)
 
 if __name__ == '__main__':
   tf.compat.v1.app.run()
