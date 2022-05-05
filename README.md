@@ -1,5 +1,7 @@
 # Object Detection in an Urban Environment
 
+This repository holds the code for Udacity's Self Driving Car Engineer Nanodegree Computer Vision project - Object Detection in an Urban Environment. It details the steps in retraining a SSD ResNet50 model on the open source Waymo camera dataset to perform object detection on a typical road scene, detecting 3 classes of objects: vehicles, pedestrains and cyclists. 
+
 ## Prerequisites
 
 ### Local docker setup
@@ -14,7 +16,7 @@ For this project, we will be using data from the [Waymo Open dataset](https://wa
 
 ### Download the Waymo dataset
 
-The first goal of this project is to download the data from the Waymo's Google Cloud bucket to your local machine. For this project, we only need a subset of the data provided (for example, we do not need to use the Lidar data). Therefore, we are going to download and trim immediately each file. In `download_process.py`, you can view the `create_tf_example` function, which will perform this processing. This function takes the components of a Waymo Tf record and saves them in the Tf Object Detection api format. An example of such function is described [here](https://tensorflow-object-detection-api-tutorial.readthedocs.io/en/latest/training.html#create-tensorflow-records). We are already providing the `label_map.pbtxt` file.
+The first goal of this project is to download the data from the Waymo's Google Cloud bucket to your local machine. For this project, we only need a subset of the data provided (for example, we do not need to use the Lidar data). Therefore, we are going to download and trim immediately each file. In `download_process.py`, you can view the `create_tf_example` function, which will perform this processing. This function takes the components of a Waymo Tf record and saves them in the Tf Object Detection api format. An example of such function is described [here](https://tensorflow-object-detection-api-tutorial.readthedocs.io/en/latest/training.html#create-tensorflow-records).
 
 ```
 cd src/data_processing
@@ -41,6 +43,8 @@ For additional exploratory data analysis, we will check the spread of classes ac
 
 ![Initial data visualisation](/assets/cls_distribution.png "Initial data visualisation")
 
+As "cyclists" are the rare class in this dataset, we cannot use a random split as this class might be underpresented in the training dataset and perform very poorly on the test and evaluation dataset. We need to proactively sieve out the tfrecords with cyclists and split them such that they are representative of the dataset.
+
 #### Brightness distribution
 
 ![Initial data visualisation](/assets/brightness_distribution.png "Initial data visualisation")
@@ -49,7 +53,7 @@ From the data above, there are many more cars than other classes in the dataset,
 
 ### Split the dataset
 
-The dataset is split randomly in the ratio 80% for training, 10% for validation and 10% for testing.
+The dataset is split randomly in the ratio 80% for training, 20% for validation.
 
 The three subfolders are:
 
@@ -104,7 +108,7 @@ cd experiments
 python3 edit_config.py \
 --train_dir /app/project/data/processed/train \
 --eval_dir /app/project/data/processed/val \
---batch_size 2 \
+--batch_size 4 \
 --checkpoint /app/project/src/experiments/pretrained_model/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8/checkpoint/ckpt-0 \
 --label_map /app/project/src/experiments/label_map.pbtxt
 ```
@@ -119,11 +123,18 @@ After the new config file is put to a new experiments folder, the training can b
 
 ```
 cd src/experiments
-python3 model_main_tf2.py --model_dir=<path_to_experiment_folder>/ --pipeline_config_path=<path_to_experiment_folder>/pipeline_new.config
-
+python3 model_main_tf2.py \ 
+--model_dir=<path_to_experiment_folder>/ \
+--pipeline_config_path=<path_to_experiment_folder>/pipeline_new.config
 ```
 
-Example command: `python3 model_main_tf2.py --model_dir=experiment_0/ --pipeline_config_path=experiment_0/pipeline_new.config`
+Example command:
+
+```
+python3 model_main_tf2.py \
+--model_dir=experiment_0/ \
+--pipeline_config_path=experiment_0/pipeline_new.config
+```
 
 ### Viewing Tensorboard
 
@@ -133,65 +144,108 @@ We can visualise the loss and learning rate trends by using Tensorboard.
 tensorboard --logdir <path_to_experiment_folder>
 ```
 
-Example command: `tensorboard --logdir experiment_0`
+Example command:
+
+```
+tensorboard --logdir experiment_0/train
+```
 
 ### Evaluation
 
 Once the training is finished, launch the evaluation process:
-*
- an evaluation process:
 
 ```
-python3 experiments/model_main_tf2.py --model_dir=experiments/reference/ --pipeline_config_path=experiments/reference/pipeline_new.config --checkpoint_dir=experiments/reference/
+python3 model_main_tf2.py \
+--model_dir=<path_to_experiment_folder>/ \
+--pipeline_config_path=<path_to_experiment_folder>/pipeline_new.config \
+--checkpoint_dir=<path_to_experiment_folder>/
 ```
 
+Example command: 
 
+```
+python3 model_main_tf2.py \
+--model_dir=experiment_0/ \
+--pipeline_config_path=experiment_0/pipeline_new.config \
+--checkpoint_dir=experiment_0/
+```
 
+### Creating an animation
 
+#### Export the trained model
+
+Modify the arguments of the following function to adjust it to your models:
+
+```
+python3 exporter_main_v2.py \
+--input_type image_tensor \
+--pipeline_config_path <path_to_experiment_folder>/pipeline_new.config \
+--trained_checkpoint_dir <path_to_experiment_folder>/ \
+--output_directory <path_to_experiment_folder>/exported/
+```
+
+Example command:
+
+```
+python3 exporter_main_v2.py \
+--input_type image_tensor \
+--pipeline_config_path experiment_0/pipeline_new.config \
+--trained_checkpoint_dir experiment_0/ \
+--output_directory experiment_0/exported/
+```
+
+#### Creating a gif
+
+```
+python3 inference_video.py \
+--labelmap_path ../experiments/label_map.pbtxt \
+--model_path ../experiments/<path_to_experiment_folder>/exported/saved_model \
+--tf_record_path ../../data/processed/test/<tfrecord_file> \
+--config_path ../experiments/<path_to_experiment_folder>/pipeline_new.config \
+--output_path animation.gif
+```
+
+Example command:
+
+```
+python3 inference_video.py \
+--labelmap_path ../experiments/label_map.pbtxt \
+--model_path ../experiments/experiment_0/exported/saved_model \
+--tf_record_path ../../data/processed/test/segment-12200383401366682847_2552_140_2572_140_with_camera_labels.tfrecord \
+--config_path ../experiments/experiment_0/pipeline_new.config \
+--output_path animation.gif
+```
 
 ### Improve the performances
 
 Most likely, this initial experiment did not yield optimal results. However, you can make multiple changes to the config file to improve this model. One obvious change consists in improving the data augmentation strategy. The [`preprocessor.proto`](https://github.com/tensorflow/models/blob/master/research/object_detection/protos/preprocessor.proto) file contains the different data augmentation method available in the Tf Object Detection API. To help you visualize these augmentations, we are providing a notebook: `Explore augmentations.ipynb`. Using this notebook, try different data augmentation combinations and select the one you think is optimal for our dataset. Justify your choices in the writeup.
 
-Keep in mind that the following are also available:
-* experiment with the optimizer: type of optimizer, learning rate, scheduler etc
-* experiment with the architecture. The Tf Object Detection API [model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md) offers many architectures. Keep in mind that the `pipeline.config` file is unique for each architecture and you will have to edit it.
-
-**Important:** If you are working on the workspace, your storage is limited. You may to delete the checkpoints files after each experiment. You should however keep the `tf.events` files located in the `train` and `eval` folder of your experiments. You can also keep the `saved_model` folder to create your videos.
 
 
-### Creating an animation
-#### Export the trained model
-Modify the arguments of the following function to adjust it to your models:
+## Results of reference pipeline
 
-```
-python experiments/exporter_main_v2.py --input_type image_tensor --pipeline_config_path experiments/reference/pipeline_new.config --trained_checkpoint_dir experiments/reference/ --output_directory experiments/reference/exported/
-```
+### Tensorboard
 
-This should create a new folder `experiments/reference/exported/saved_model`. You can read more about the Tensorflow SavedModel format [here](https://www.tensorflow.org/guide/saved_model).
+![loss](/assets/experiment_0/loss.jpeg "loss")
 
-Finally, you can create a video of your model's inferences for any tf record file. To do so, run the following command (modify it to your files):
-```
-python inference_video.py --labelmap_path label_map.pbtxt --model_path experiments/reference/exported/saved_model --tf_record_path /data/waymo/testing/segment-12200383401366682847_2552_140_2572_140_with_camera_labels.tfrecord --config_path experiments/reference/pipeline_new.config --output_path animation.gif
-```
+### Evaluation
 
-## Submission Template
+![map](/assets/experiment_0/map.jpeg "map")
 
-### Project overview
-This section should contain a brief description of the project and what we are trying to achieve. Why is object detection such an important component of self driving car systems?
+### Animation
 
-### Set up
-This section should contain a brief description of the steps to follow to run the code for this repository.
+![Test data 0](/assets/experiment_0/animation.gif "Test data 0")
 
-### Dataset
-#### Dataset analysis
-This section should contain a quantitative and qualitative description of the dataset. It should include images, charts and other visualizations.
-#### Cross validation
-This section should detail the cross validation strategy and justify your approach.
+## Results of improved pipeline
 
-### Training
-#### Reference experiment
-This section should detail the results of the reference experiment. It should includes training metrics and a detailed explanation of the algorithm's performances.
+### Tensorboard
 
-#### Improve on the reference
-This section should highlight the different strategies you adopted to improve your model. It should contain relevant figures and details of your findings.
+![loss](/assets/experiment_1/loss.jpeg "loss")
+
+### Evaluation
+
+![map](/assets/experiment_1/map.jpeg "map")
+
+### Animation
+
+![Test data 0](/assets/experiment_1/animation.gif "Test data 0")
