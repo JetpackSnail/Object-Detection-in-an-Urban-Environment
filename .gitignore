@@ -11,4 +11,8 @@
 # Training and model files
 *.tfrecord
 pretrained_model/
-experiment_*/
+eval/
+train/
+exported/
+ckpt-*
+checkpoint
