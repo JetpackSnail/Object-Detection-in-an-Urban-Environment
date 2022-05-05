@@ -7,6 +7,21 @@ import shutil
 from utils import get_module_logger
 
 
+def move_files(file_lst, idx_lst, num_train, source, destination):
+    # Move train
+    for idx in idx_lst[:num_train]:
+        _, name = os.path.split(file_lst[idx]) 
+        src = os.path.join(source, name)
+        dest = os.path.join(destination, "train", name)
+        shutil.move(src, dest)
+
+    # Move val
+    for idx in idx_lst[num_train:]:
+        _, name = os.path.split(file_lst[idx]) 
+        src = os.path.join(source, name)
+        dest = os.path.join(destination, "val", name)
+        shutil.move(src, dest)
+
 def split(source, destination):
     """
     Create three splits from the processed records. The files should be moved to new folders in the
@@ -39,34 +54,9 @@ def split(source, destination):
 
     random.shuffle(cyclist_lst)
     random.shuffle(leftover_lst)
-
-    # Move train (cyclist)
-    for idx in cyclist_lst[:cyclist_train]:
-        directory, name = os.path.split(file_lst[idx]) 
-        src = os.path.join(source, name)
-        dest = os.path.join(destination, "train", name)
-        os.symlink(src=src, dst=dest)
-
-    # Move val (cyclist)
-    for idx in cyclist_lst[cyclist_train:]:
-        directory, name = os.path.split(file_lst[idx]) 
-        src = os.path.join(source, name)
-        dest = os.path.join(destination, "val", name)
-        os.symlink(src=src, dst=dest)
-   
-    # Move train (others)
-    for idx in leftover_lst[:leftover_train]:
-        directory, name = os.path.split(file_lst[idx]) 
-        src = os.path.join(source, name)
-        dest = os.path.join(destination, "train", name)
-        os.symlink(src=src, dst=dest)
-
-    # Move val (others)
-    for idx in leftover_lst[leftover_train:]:
-        directory, name = os.path.split(file_lst[idx]) 
-        src = os.path.join(source, name)
-        dest = os.path.join(destination, "val", name)
-        os.symlink(src=src, dst=dest)
+    
+    move_files(file_lst, cyclist_lst, cyclist_train, source, destination)
+    move_files(file_lst, leftover_lst, leftover_train, source, destination)
 
     logger.info("Done")
 
