@@ -236,6 +236,36 @@ Most likely, this initial experiment did not yield optimal results. However, you
 
 ![Test data 0](/assets/experiment_0/animation.gif "Test data 0")
 
+### Discussion
+
+Using the default pipeline config file, we can begin our first training job. From the Tensorboard graphs, the losses (classification, localization and regularization) can all be seen to decrease with the number of epoches. The final overall loss is a little lower than 15 after 10,000 epoches.
+
+Looking at the evaluation numbers, the average precision and average recall are all extremely low (around < 0.25) at all area and IoU values. This means that the model does not generalise well to new data, and the training job has lots of room of improvement. The performance can be seen in the animation above, where none of the vehicles are detected (detection threshold set at 0.5). 
+
+### Improvements to next iteration
+
+It is clear that the default values in the pipeline config has room for improvement. From the exploratory data analysis above, we can see class imbalances (many more vehicles than cyclists) and inconsistent image data.
+
+Regarding the class imbalance, we have already taken steps to ensure that the "cyclist" class is properly represented in the training/evaluation datasets when doing the data splits.
+
+For inconsistent image data, we can make use of Tensorflow image augmentations to increase the quantity and quality of training/evaluation image data. From the exploratory data analysis above, we can see that is significant variation in image contrast and brightness, as well as the scale of detected classes. Hence, we can use the following image augmentations to improve our data representation:
+
+* random_adjust_brightness
+
+* random_image_scale
+
+* random_adjust_hue
+
+* random_adjust_contrast
+
+* random_adjust_saturation
+
+* random_distort_color
+
+The new augmentations can be visualized in the notebook `Explore augmentations.ipynb`.
+
+The number of steps will also be increased from 10,000 to 25,000 to allow the loss to converge more. Other modifications include increasing batch size from 2 to 4, increasing max total detections from 100 to 200 in non max supression.
+
 ## Results of improved pipeline
 
 ### Tensorboard
@@ -249,3 +279,11 @@ Most likely, this initial experiment did not yield optimal results. However, you
 ### Animation
 
 ![Test data 0](/assets/experiment_1/animation.gif "Test data 0")
+
+### Discussion
+
+From the Tensorboard graphs, the final total loss improved from around 15 to around 0.7. This can be reflected in the higher average recall and average precision values. However, the values for small areas remain relatively low compared to larges areas. The animation shows the improvements in detections, and shows the deficiencies in detecting very small objects.
+
+### Further work
+
+The number of training steps could be increased futher for even lower losses since it has not yet fully converged. To further improve the model, we could also differentiate the training/evaluation dataset by size of detected classes since there is a marked difference in model performance between small and large areas.
