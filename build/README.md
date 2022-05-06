@@ -5,6 +5,14 @@
 * NVIDIA GPU with the latest driver installed
 * docker / nvidia-docker
 
+You can pull the Docker image straight from DockerHub or build your own image with the Dockerfile provided.
+
+## Pull
+
+```
+docker pull jetpacksnail/project-dev
+```
+
 ## Build
 Build the image with:
 ```
